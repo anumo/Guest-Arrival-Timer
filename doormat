@@ -1,0 +1,55 @@
+/*Anu Mohajerjasbi
+HCDE 498 
+Final Project 
+Doormat Code
+
+
+
+This code is for the arduino connected to the doormat--it sends a '1' to the buzzer, which is used to indicate
+that the guest has arrived, and the buzzer should stop timing. This code is based off of a sample code to test buttons 
+and xbee communication.*/
+
+#include <SoftwareSerial.h>
+
+
+// constants won't change. They're used here to 
+// set pin numbers:
+const int buttonPin = 2;     // the number of the pushbutton pin
+const int ledPin =  13;      // the number of the LED pin
+SoftwareSerial xbeeSerial(8, 9); // RX, TX
+
+// variables will change:
+int buttonState = 0;         // variable for reading the pushbutton status
+int lastButtonState = 0;
+
+void setup() {
+  // initialize the LED pin as an output:
+  pinMode(ledPin, OUTPUT);      
+  // initialize the pushbutton pin as an input:
+  pinMode(buttonPin, INPUT);     
+  // begin the serial connection with xbee
+  xbeeSerial.begin(19200);
+  Serial.begin(57600);
+}
+
+void loop(){
+  // read the state of the pushbutton value:
+  buttonState = digitalRead(buttonPin);
+
+  // check if the pushbutton is pressed.
+  // if it is, the buttonState is HIGH:
+  if (buttonState != lastButtonState) {     
+    // turn LED on:    
+    if (buttonState == HIGH) {
+      //for debugging purposes; to make sure button is being acknowledged
+      //also for external large button that has built in LED, this will turn that LED on
+      digitalWrite(ledPin, HIGH);  
+      // send to xbee serial connection
+      xbeeSerial.print('1');
+    } else {
+      digitalWrite(ledPin, LOW);
+    }
+  }
+  lastButtonState = buttonState;
+
+}
