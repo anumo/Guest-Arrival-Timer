@@ -1,0 +1,132 @@
+/*Anu Mohajerjasbi
+HCDE 498
+Final Project
+Buzzer Code 
+
+This code is for the buzzer side of the project. It has a button, lcd, timer, and stopwatch. 
+There are two things happening with the use of one function: uses the millis function, which tells us what time it is, to subtract
+from the countdown number (timer), and simultaneoulsy count how long its taking for the guest to arrive (stopwatch). Both timer and stopwatch
+are started by the button. All current data is displayed on the LCD/
+See subsequent comments to see what each component of the code does.*/
+
+#include <SoftwareSerial.h> //xbee library
+#include "LiquidCrystal.h" //LCD library 
+#include "Wire.h"
+
+// this constant won't change:
+const int  buttonPin = 2;    // the pin that the pushbutton is attached to
+const int ledPin = 13;       // the pin that the LED is attached to
+SoftwareSerial xbeeSerial(8, 9); // RX, TX
+
+// Connect via i2c, default address #0 (A0-A2 not jumpered)
+LiquidCrystal lcd(0);
+
+
+// Variables will change:
+int buttonState = 0;         // current state of the button
+int lastButtonState = 0;     // previous state of the button
+long startTime;              //initialize start time variable
+long countdownTime = 120000; //first countdown time initialized to 2 minues (in milliseconds)
+long currentCountdown;       //initialize current coundown variable
+long elapsedTime;            //initialize elapsed time variable
+char recState = 'hi';        //initialize rec state variable, note: 'hi' is completely arbitrary 
+boolean printing = false;    //intialize printing to false; important that it is initialized to false and not true, because of following logic
+
+void setup() {
+  // set up the LCD's number of rows and columns: 
+  lcd.begin(16, 2);
+  // Print a message to the LCD.
+  lcd.print("HI! Let them in!");
+  // initialize the button pin as a input:
+  pinMode(buttonPin, INPUT);
+  // initialize the LED as an output:
+  pinMode(ledPin, OUTPUT);
+  // initialize serial communication:
+  xbeeSerial.begin(19200);
+  Serial.begin(57600);
+}
+
+
+void loop() {
+  // read the pushbutton input pin:
+  buttonState = digitalRead(buttonPin);
+
+  // compare the buttonState to its previous state
+  if (buttonState != lastButtonState) {
+    // if the state has changed, increment the counter
+    if (buttonState == HIGH && printing == false) {
+      // if the current state is HIGH then the button went from off to on
+      startTime = millis(); //store starting time 
+      //millis function is just the running timer of the code, so in order to display 0, you need to store starting time
+      printing = true; //printing true so able to enter if statment that displays timer to LCD
+      lcd.clear(); //clear the LCD screen so fresh/current data can be displayed
+    } 
+    else {
+    }
+  }
+  // save the current state as the last state, 
+  //for next time through the loop
+  lastButtonState = buttonState;
+
+
+  elapsedTime = millis() - startTime; //store the elapsed time
+  currentCountdown = countdownTime - elapsedTime;
+  //if printing = true, or rather if the button is pressed/someone is buzzed in, start the timer and stopwatch and display to LCD 
+  if (printing == true) {
+    lcd.setCursor(0, 0);
+    lcd.print("ETA:");
+    long countdownSeconds = (currentCountdown / 1000);
+    if (currentCountdown < 0) {
+      lcd.setCursor(0, 0);
+      lcd.print("ETA: OPEN DOOR! "); //if countdown/timer reaches 0, tells us to go open the door
+    } 
+    //specific if statement conditions to do with LCD display; dont want to
+    //clear display but want to be able to change particular line or column 
+    else if (countdownSeconds < 100 && countdownSeconds > 10 || countdownSeconds == 10) {
+      lcd.setCursor(10, 0);
+      lcd.print(" ");
+      lcd.print(countdownSeconds);
+    } 
+    else if (countdownSeconds < 10) {
+      lcd.setCursor(10, 0);
+      lcd.print("  ");
+      lcd.print(countdownSeconds);
+    } 
+    else {
+      lcd.setCursor(10, 0);
+      lcd.print(countdownSeconds);
+    }
+    lcd.setCursor(0, 1);
+    lcd.print("Real:");
+    long stopwatchSeconds = (elapsedTime / 1000);
+    if (stopwatchSeconds < 10) {
+      lcd.setCursor(12, 1);
+      lcd.print(stopwatchSeconds);
+    } 
+    else if (stopwatchSeconds > 10 && stopwatchSeconds < 100 || stopwatchSeconds == 100 || stopwatchSeconds == 10) {
+      lcd.setCursor(11, 1);
+      lcd.print(stopwatchSeconds);
+    }
+    else {
+      lcd.setCursor(10, 1);
+      lcd.print(stopwatchSeconds);
+    }
+  } 
+
+  //xbee communication between buzzer and doormat 
+  if (xbeeSerial.available() && printing == true) {
+    recState = xbeeSerial.read(); //read xbee to see what its receiving from doormat xbee
+    //if xbee is sending a '1' stop printing/timing and report
+    if (recState == '1') { 
+      digitalWrite(ledPin, HIGH); //for debugging purposes, to see that xbees are communicating
+      printing = false; //stop printing 
+      //elapsed time becomes next countdown time
+      //however long it took this guest becomes ETA of next guest
+      countdownTime = elapsedTime; 
+    } 
+    else {
+      digitalWrite(ledPin, LOW);
+    }
+  }
+}
+
